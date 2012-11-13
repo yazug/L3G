@@ -5,17 +5,64 @@
 // Defines ////////////////////////////////////////////////////////////////
 #define _MULTI_REGISTER_GYRO_READ
 
-// The Arduino two-wire interface uses a 7-bit number for the address, 
+// The Arduino two-wire interface uses a 7-bit number for the address,
 // and sets the last bit correctly based on reads and writes
 #define L3GD20_ADDR_SEL_LOW	0x6a
 #define L3GD20_ADDR_SEL_HIGH	0x6b
+
+#define L3G4200D_ADDRESS_SA0_LOW  (0xD0 >> 1)
+#define L3G4200D_ADDRESS_SA0_HIGH (0xD2 >> 1)
+#define L3GD20_ADDRESS_SA0_LOW    (0xD4 >> 1)
+#define L3GD20_ADDRESS_SA0_HIGH   (0xD6 >> 1)
 
 // Public Methods //////////////////////////////////////////////////////////////
 
 L3GD20::L3GD20()
 {
-	I2CAddr = L3GD20_ADDR_SEL_HIGH;
+	address = L3GD20_ADDR_SEL_HIGH;
+	_device = L3G_DEVICE_AUTO;
 }
+
+bool L3GD20::init(byte device, byte sa0)
+{
+  _device = device;
+  switch (_device)
+  {
+    case L3G4200D_DEVICE:
+      if (sa0 == L3G_SA0_LOW)
+      {
+        address = L3G4200D_ADDRESS_SA0_LOW;
+        return true;
+      }
+      else if (sa0 == L3G_SA0_HIGH)
+      {
+        address = L3G4200D_ADDRESS_SA0_HIGH;
+        return true;
+      }
+      else
+        return autoDetectAddress();
+      break;
+
+    case L3GD20_DEVICE:
+      if (sa0 == L3G_SA0_LOW)
+      {
+        address = L3GD20_ADDRESS_SA0_LOW;
+        return true;
+      }
+      else if (sa0 == L3G_SA0_HIGH)
+      {
+        address = L3GD20_ADDRESS_SA0_HIGH;
+        return true;
+      }
+      else
+        return autoDetectAddress();
+      break;
+
+    default:
+      return autoDetectAddress();
+  }
+}
+
 
 
 uint8_t L3GD20::setSELState(uint8_t SELState)
@@ -24,11 +71,11 @@ uint8_t L3GD20::setSELState(uint8_t SELState)
 
 	if(0 == SELState)
 	{
-		I2CAddr = L3GD20_ADDR_SEL_LOW;
+		address = L3GD20_ADDR_SEL_LOW;
 	}
 	else if(1 == SELState)
 	{
-		I2CAddr = L3GD20_ADDR_SEL_HIGH;
+		address = L3GD20_ADDR_SEL_HIGH;
 	}
 
 	return ReturnValue;
@@ -47,7 +94,7 @@ void L3GD20::enableDefault(void)
 // Writes a gyro register
 void L3GD20::writeReg(uint8_t reg, uint8_t value)
 {
-	Wire.beginTransmission(I2CAddr);
+	Wire.beginTransmission(address);
 	Wire.write(reg);
 	Wire.write(value);
 	Wire.endTransmission();
@@ -58,34 +105,34 @@ void L3GD20::writeReg(uint8_t reg, uint8_t value)
 uint8_t L3GD20::readReg(uint8_t reg)
 {
 	uint8_t value;
-	
-	Wire.beginTransmission(I2CAddr);
+
+	Wire.beginTransmission(address);
 	Wire.write(reg);
 	Wire.endTransmission();
-	Wire.requestFrom(I2CAddr, 1);
+	Wire.requestFrom(address, 1);
 
 	while(!Wire.available());
 
 	value = Wire.read();
 	Wire.endTransmission();
-	
+
 	return value;
 }
 
-// Reads the 3 gyro channels 
+// Reads the 3 gyro channels
 void L3GD20::readGyro(int16_t *pX, int16_t *pY, int16_t *pZ)
 {
-	Wire.beginTransmission(I2CAddr);
+	Wire.beginTransmission(address);
 
 #ifdef _MULTI_REGISTER_GYRO_READ
-	// assert the MSB of the address to get the gyro 
+	// assert the MSB of the address to get the gyro
 	// to do slave-transmit subaddress updating.
-	Wire.write(L3GD20_OUT_X_L | (1 << 7)); 
+	Wire.write(L3GD20_OUT_X_L | (1 << 7));
 	Wire.endTransmission();
-	Wire.requestFrom(I2CAddr, 6);
+	Wire.requestFrom(address, 6);
 
 	while (Wire.available() < 6);
-	
+
 	uint8_t xla = Wire.read();
 	uint8_t xha = Wire.read();
 	uint8_t yla = Wire.read();
@@ -159,3 +206,19 @@ void L3GD20::setOutputDataRate(uint8_t DataRate)
 }
 
 
+// Private Methods //////////////////////////////////////////////////////////////
+
+bool L3GD20::autoDetectAddress(void)
+{
+  // try each possible address and stop if reading WHO_AM_I returns the expected response
+  address = L3G4200D_ADDRESS_SA0_LOW;
+  if (readReg(L3G_WHO_AM_I) == 0xD3) return true;
+  address = L3G4200D_ADDRESS_SA0_HIGH;
+  if (readReg(L3G_WHO_AM_I) == 0xD3) return true;
+  address = L3GD20_ADDRESS_SA0_LOW;
+  if (readReg(L3G_WHO_AM_I) == 0xD4) return true;
+  address = L3GD20_ADDRESS_SA0_HIGH;
+  if (readReg(L3G_WHO_AM_I) == 0xD4) return true;
+
+  return false;
+}

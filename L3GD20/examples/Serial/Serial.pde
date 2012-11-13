@@ -6,6 +6,13 @@ L3GD20 gyro;
 void setup() {
   Serial.begin(9600);
   Wire.begin();
+  
+  if (!gyro.init())
+  {
+    Serial.println("Failed to autodetect gyro type!");
+    while (1);
+  }
+
   gyro.enableDefault();
 }
 

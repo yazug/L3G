@@ -3,9 +3,22 @@
 
 #include <Arduino.h> // for byte data type
 
+// device types
+
+#define L3G_DEVICE_AUTO 0
+#define L3G4200D_DEVICE 1
+#define L3GD20_DEVICE   2
+
+
+// SA0 states
+
+#define L3G_SA0_LOW  0
+#define L3G_SA0_HIGH 1
+#define L3G_SA0_AUTO 2
+
 // register addresses
 
-#define L3GD20_WHO_AM_I      0x0F
+#define L3G_WHO_AM_I      0x0F
 
 #define L3GD20_CTRL_REG1     0x20
 #define L3GD20_CTRL_REG2     0x21
@@ -41,6 +54,7 @@ class L3GD20
 	public:
 		L3GD20();
 
+		bool init(byte device = L3G_DEVICE_AUTO, byte sa0 = L3G_SA0_AUTO);
 	public:
 		uint8_t setSELState(uint8_t SELState);
 		void enableDefault(void);
@@ -54,8 +68,9 @@ class L3GD20
 		void writeReg(uint8_t reg, uint8_t value);
 		uint8_t readReg(uint8_t reg);
 
-	protected:
-		int I2CAddr;
+	private:
+		byte _device; // chip type (4200D or D20)
+		int address;
 };
 
 #endif
