@@ -55,8 +55,8 @@ class L3GD20
 		L3GD20();
 
 		bool init(byte device = L3G_DEVICE_AUTO, byte sa0 = L3G_SA0_AUTO);
-	public:
 		uint8_t setSELState(uint8_t SELState);
+	public:
 		void enableDefault(void);
 		void readGyro(int16_t *pX, int16_t *pY, int16_t *pZ);
 		void readTemperature(int8_t *pTemperature);

@@ -61,8 +61,6 @@ class L3G
 
     bool init(byte device = L3G_DEVICE_AUTO, byte sa0 = L3G_SA0_AUTO);
 
-    void enableDefault(void);
-
     void writeReg(byte reg, byte value);
     byte readReg(byte reg);
 
@@ -72,6 +70,14 @@ class L3G
     static void vector_cross(const vector *a, const vector *b, vector *out);
     static float vector_dot(const vector *a,const vector *b);
     static void vector_normalize(vector *a);
+
+  public:
+    void enableDefault(void);
+    void readGyro(int16_t *pX, int16_t *pY, int16_t *pZ);
+    void readTemperature(int8_t *pTemperature);
+    void setFullScaleRange(uint8_t FullScaleRange);
+    void setBandwidth(uint8_t Bandwidth);
+    void setOutputDataRate(uint8_t DataRate);
 
   private:
       byte _device; // chip type (4200D or D20)

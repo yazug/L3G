@@ -3,6 +3,7 @@
 #include <math.h>
 
 // Defines ////////////////////////////////////////////////////////////////
+#define _MULTI_REGISTER_GYRO_READ
 
 // The Arduino two-wire interface uses a 7-bit number for the address,
 // and sets the last bit correctly based on reads and writes
@@ -62,7 +63,7 @@ void L3G::enableDefault(void)
 }
 
 // Writes a gyro register
-void L3G::writeReg(byte reg, byte value)
+void L3G::writeReg(uint8_t reg, uint8_t value)
 {
   Wire.beginTransmission(address);
   Wire.write(reg);
@@ -71,43 +72,64 @@ void L3G::writeReg(byte reg, byte value)
 }
 
 // Reads a gyro register
-byte L3G::readReg(byte reg)
+uint8_t L3G::readReg(uint8_t reg)
 {
-  byte value;
+  uint8_t value;
 
   Wire.beginTransmission(address);
   Wire.write(reg);
   Wire.endTransmission();
-  Wire.requestFrom(address, (byte)1);
+  Wire.requestFrom(address, 1);
+
+  while(!Wire.available());
+
   value = Wire.read();
   Wire.endTransmission();
 
   return value;
 }
 
+// Reads the 3 gyro channels
+void L3G::readGyro(int16_t *pX, int16_t *pY, int16_t *pZ)
+{
+	Wire.beginTransmission(address);
+
+#ifdef _MULTI_REGISTER_GYRO_READ
+	// assert the MSB of the address to get the gyro
+	// to do slave-transmit subaddress updating.
+	Wire.write(L3GD20_OUT_X_L | (1 << 7));
+	Wire.endTransmission();
+	Wire.requestFrom(address, 6);
+
+	while (Wire.available() < 6);
+
+	uint8_t xla = Wire.read();
+	uint8_t xha = Wire.read();
+	uint8_t yla = Wire.read();
+	uint8_t yha = Wire.read();
+	uint8_t zla = Wire.read();
+	uint8_t zha = Wire.read();
+
+#else
+
+	uint8_t xla = readReg(L3GD20_OUT_X_L);
+	uint8_t xha = readReg(L3GD20_OUT_X_H);
+	uint8_t yla = readReg(L3GD20_OUT_Y_L);
+	uint8_t yha = readReg(L3GD20_OUT_Y_H);
+	uint8_t zla = readReg(L3GD20_OUT_Z_L);
+	uint8_t zha = readReg(L3GD20_OUT_Z_H);
+
+#endif	//_AUTO_ADDRESS_UPDATE
+
+	*pX = (int16_t)(xha << 8 | xla);
+	*pY = (int16_t)(yha << 8 | yla);
+	*pZ = (int16_t)(zha << 8 | zla);
+}
+
 // Reads the 3 gyro channels and stores them in vector g
 void L3G::read()
 {
-  Wire.beginTransmission(address);
-  // assert the MSB of the address to get the gyro
-  // to do slave-transmit subaddress updating.
-  Wire.write(L3G_OUT_X_L | (1 << 7));
-  Wire.endTransmission();
-  Wire.requestFrom(address, (byte)6);
-
-  while (Wire.available() < 6);
-
-  uint8_t xlg = Wire.read();
-  uint8_t xhg = Wire.read();
-  uint8_t ylg = Wire.read();
-  uint8_t yhg = Wire.read();
-  uint8_t zlg = Wire.read();
-  uint8_t zhg = Wire.read();
-
-  // combine high and low bytes
-  g.x = (int16_t)(xhg << 8 | xlg);
-  g.y = (int16_t)(yhg << 8 | ylg);
-  g.z = (int16_t)(zhg << 8 | zlg);
+  readGyro(&g.x,&g.y,&g.z);
 }
 
 void L3G::vector_cross(const vector *a,const vector *b, vector *out)
@@ -128,6 +150,51 @@ void L3G::vector_normalize(vector *a)
   a->x /= mag;
   a->y /= mag;
   a->z /= mag;
+}
+
+void L3G::readTemperature(int8_t *pTemperature)
+{
+	uint8_t RegisterValue;
+
+	RegisterValue = readReg(L3G_OUT_TEMP);
+
+	*pTemperature = (int8_t)RegisterValue;
+}
+
+void L3G::setFullScaleRange(uint8_t FullScaleRange)
+{
+	uint8_t RegisterValue;
+
+	RegisterValue = readReg(L3G_CTRL_REG4);
+
+	RegisterValue &= ~(0x30);
+	RegisterValue |= ((FullScaleRange & 0x03) << 4);
+
+	writeReg(L3G_CTRL_REG4, RegisterValue);
+}
+
+void L3G::setBandwidth(uint8_t Bandwidth)
+{
+	uint8_t RegisterValue;
+
+	RegisterValue = readReg(L3G_CTRL_REG1);
+
+	RegisterValue &= ~(0x30);
+	RegisterValue |= ((Bandwidth & 0x03) << 4);
+
+	writeReg(L3G_CTRL_REG1, RegisterValue);
+}
+
+void L3G::setOutputDataRate(uint8_t DataRate)
+{
+	uint8_t RegisterValue;
+
+	RegisterValue = readReg(L3G_CTRL_REG1);
+
+	RegisterValue &= ~(0xC0);
+	RegisterValue |= ((DataRate & 0x03) << 6);
+
+	writeReg(L3G_CTRL_REG1, RegisterValue);
 }
 
 // Private Methods //////////////////////////////////////////////////////////////

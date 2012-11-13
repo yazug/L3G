@@ -71,11 +71,14 @@ uint8_t L3GD20::setSELState(uint8_t SELState)
 
 	if(0 == SELState)
 	{
-		address = L3GD20_ADDR_SEL_LOW;
+
+		if(!init(L3GD20_DEVICE,L3G_SA0_LOW))
+			ReturnValue = 1;
 	}
 	else if(1 == SELState)
 	{
-		address = L3GD20_ADDR_SEL_HIGH;
+		if(!init(L3GD20_DEVICE,L3G_SA0_HIGH))
+			ReturnValue = 1;
 	}
 
 	return ReturnValue;
